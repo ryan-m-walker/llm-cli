@@ -180,6 +180,7 @@ async function main() {
                         }
 
                         if (input.trim() === ':new' || input.trim() === ':n') {
+                            rl.close()
                             return startConversation()
                         }
 

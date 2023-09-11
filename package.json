@@ -1,6 +1,7 @@
 {
-  "name": "gpt-cli",
-  "version": "1.0.0",
+  "name": "llm-cli",
+  "version": "0.0.1",
+  "license": "MIT",
   "description": "",
   "main": "./dist/cli.js",
   "bin": {
@@ -16,7 +17,6 @@
   "type": "module",
   "keywords": [],
   "author": "Ryan Walker",
-  "license": "ISC",
   "devDependencies": {
     "@types/node": "^20.5.9",
     "@typescript-eslint/eslint-plugin": "^6.6.0",
