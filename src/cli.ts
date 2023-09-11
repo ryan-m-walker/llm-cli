@@ -3,7 +3,7 @@
 import 'dotenv/config'
 
 import readline from 'node:readline'
-import fs from 'node:fs'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { Command } from 'commander'
@@ -14,12 +14,15 @@ import { capitalCase } from 'change-case'
 import { z } from 'zod'
 import clipboard from 'node-clipboardy'
 import * as dateFns from 'date-fns'
+import inquirer from 'inquirer'
 
-import { Config } from './config.js'
-import { renderError, renderMessage } from './ui.js'
-import { CONFIG_DIR_PATH, CONVO_HISTORY_PATH } from './const.js'
+import { Config, LLMProvider, PROVIDER_MODELS } from './config.js'
+import { ErrorType, renderError, renderMessage } from './ui.js'
+import { CONFIG_DIR_PATH, CONVO_HISTORY_PATH, PRESETS_PATH } from './const.js'
 import { config } from './config.js'
 import { ArrayStore } from './fs-store.js'
+import { getAllPresetNames, getAllPresets } from './presets.js'
+import { serialize } from './utils.js'
 
 const messageSchema = z.object({
     role: z.union([
@@ -75,6 +78,145 @@ async function main() {
             console.log()
         })
 
+    const presetCommand = program
+        .command('preset')
+
+    presetCommand.command('new')
+        .action(async () => {
+            const existing = await getAllPresetNames()
+
+            const nameResponse = await inquirer.prompt<{ name: string }>({
+                type: 'input',
+                name: 'name',
+                message: 'What would you like to name your preset?',
+                validate(value) {
+                    if (!value) return 'Name is required'
+
+                    if (existing.includes(value.trim())) {
+                        return `Preset name "${value.trim()}" already exists.`
+                    } 
+
+                    return true 
+                },
+            })
+
+            const descriptionResponse = await inquirer.prompt<{ description: string }>({
+                type: 'input',
+                name: 'description',
+                message: 'What description would you like to give your preset? (Optional)',
+            })
+
+            const providerResponse = await inquirer.prompt<{ provider: string }>({
+                type: 'list',
+                name: 'provider',
+                message: 'Which LLM provider would you like to use?',
+                choices: Object.values(LLMProvider)
+            })
+
+            const apiKeyResponse = await inquirer.prompt({
+                type: 'input',
+                name: 'apiKey',
+                message: `What is your ${providerResponse.provider} API key?`,
+                validate(value) {
+                    if (!value) return 'API key is required'
+                    return true
+                }
+            })
+
+            const models = providerResponse.provider === LLMProvider.OpenAI
+                ? PROVIDER_MODELS[LLMProvider.OpenAI]
+                : PROVIDER_MODELS[LLMProvider.Anthropic]
+
+            const modelResponse = await inquirer.prompt({
+                type: 'list',
+                loop: false,
+                name: 'model',
+                message: 'Which LLM would you like to use?',
+                choices: models
+            })
+
+            const temperatureResponse = await inquirer.prompt({
+                type: 'number',
+                name: 'temperature',
+                message: 'What model temperate would you like to use?',
+                default: 0,
+            })
+
+
+            const name = nameResponse.name
+
+            const preset = {
+                ...providerResponse,
+                ...apiKeyResponse,
+                ...modelResponse,
+                ...temperatureResponse,
+                ...descriptionResponse,
+            }
+
+            const serialzed = serialize(preset)
+            console.log({ serialzed })
+
+            await fs.writeFile(
+                path.join(PRESETS_PATH, name + '.json'),
+                serialize(preset),
+                'utf8'
+            )
+
+            console.log()
+            console.log(`Preset "${name}" created.`)
+            console.log()
+        })
+
+    presetCommand
+        .command('list')
+        .action(async () => {
+            const allPresets = await getAllPresets()
+
+            for (const p of allPresets) {
+                console.log(
+                    boxen([
+                        pc.bold(p.name) + ':',
+                        p.description ? pc.dim(p.description) : null,
+                        'Provider: ' + p.provider,
+                        'Model: ' + p.model,
+                        'Temperature: ' + p.temperature,
+                    ].filter(Boolean).join('\n'),
+                    {
+                        borderStyle: 'round',
+                        borderColor: 'gray',
+                        padding: 1,
+                    })
+                )
+            }
+        })
+
+    presetCommand
+        .command('use [preset]')
+        .action(async (preset) => {
+            const allPresetNames = await getAllPresetNames()
+
+            if (!preset) {
+                const presetResponse = await inquirer.prompt({
+                    name: 'preset',
+                    type: 'list',
+                    choices: allPresetNames,
+                    message: 'Choose a preset',
+                })
+
+                console.log({ presetResponse })
+                return
+            }
+
+            if (!allPresetNames.includes(preset.trim())) {
+                renderError(ErrorType.InputError, [
+                    `Preset "${preset}" does not exist.`,
+                    'Use `llm preset new` to create a new preset.'
+                ])
+                process.exit(1)
+            }
+        })
+        
+
     const historyCommand = program
         .command('history')
         .description('View and manage previous conversations history')
@@ -82,8 +224,8 @@ async function main() {
     historyCommand
         .command('view')
         .description('View past conversation history')
-        .action(() => {
-            const allMessages = getAllMessages()            
+        .action(async () => {
+            const allMessages = await getAllMessages()            
 
             if (!allMessages || allMessages.length === 0) {
                 console.log(pc.dim('(No conversation history)'))
@@ -97,13 +239,13 @@ async function main() {
     historyCommand
         .command('clear')
         .description('Clear all previous history')
-        .action(() => {
+        .action(async () => {
             // TODO: confirmation
-            const files = fs.readdirSync(path.join(CONFIG_DIR_PATH))
+            const files = await fs.readdir(path.join(CONFIG_DIR_PATH))
 
             for (const file of files) {
                 if (file.trim() === 'config.json') continue
-                fs.unlinkSync(path.join(CONFIG_DIR_PATH, file))
+                await fs.unlink(path.join(CONFIG_DIR_PATH, file))
             }
         })
 
@@ -125,8 +267,7 @@ async function main() {
                 }
 
                 if (!mergedConfig.apiKey) {
-                    renderError([
-                        pc.bold('AuthenticationError'),
+                    renderError(ErrorType.AuthenticationError, [
                         'Your OpenAI API key has not been set.',
                         'Use `gpt config set --apiKey=<YOUR API KEY>` to set it.'
                     ])
@@ -240,7 +381,7 @@ async function main() {
                             signal: controller.signal
                         }).catch((error) => {
                             if (error instanceof AuthenticationError) {
-                                renderError([
+                                renderError(ErrorType.AuthenticationError, [
                                     'Are you sure your OpenAI token is correct?',
                                     'Set it using `gpt config set --apiKey=<YOUR API KEY>`',
                                 ])
@@ -281,14 +422,14 @@ async function main() {
     await program.parseAsync()
 }
 
-function getAllMessages() {
-    const files = fs.readdirSync(CONVO_HISTORY_PATH)
+async function getAllMessages() {
+    const files = await fs.readdir(CONVO_HISTORY_PATH)
 
     const allMessages: { date: Date, messages: Message[] }[] = []
 
     for (const file of files) {
         if (file.endsWith('.json') && file !== 'config.json') {
-            const json = JSON.parse(fs.readFileSync(path.join(CONVO_HISTORY_PATH, file), 'utf8'))
+            const json = JSON.parse(await fs.readFile(path.join(CONVO_HISTORY_PATH, file), 'utf8'))
             const parsed = messageSchema.array().safeParse(json)
 
             if (!parsed.success) {

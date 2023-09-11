@@ -1,5 +1,7 @@
 import fs from 'node:fs'
 
+import { serialize } from './utils.js'
+
 type StoreOptions<T extends Record<string, unknown>> = {
     filepath: string
     defaults: T
@@ -32,12 +34,12 @@ export class Store<T extends Record<string, unknown>> {
 
     set<K extends keyof T>(key: K, value: T[K]) {
         this._data[key] = value
-        fs.writeFileSync(this.filepath, JSON.stringify(this._data), 'utf8')
+        fs.writeFileSync(this.filepath, serialize(this._data), 'utf8')
     }
 
     reset() {
         this._data = this.defaults
-        fs.writeFileSync(this.filepath, JSON.stringify(this._data), 'utf8')
+        fs.writeFileSync(this.filepath, JSON.serialize(this._data), 'utf8')
     }
 
     values() {
@@ -72,7 +74,7 @@ export class ArrayStore<T> {
 
     push(value: T) {
         this._data.push(value)
-        fs.writeFileSync(this.filepath, JSON.stringify(this._data), 'utf8')
+        fs.writeFileSync(this.filepath, serialize(this._data), 'utf8')
     }
 
     at(index: number): T | undefined {

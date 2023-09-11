@@ -1,7 +1,15 @@
 import boxen from 'boxen'
 import pc from 'picocolors'
 
-export function renderError(input: string | string[]) {
+export enum ErrorType {
+    AuthenticationError = 'AuthenticationError',
+    InputError = 'InputError',
+}
+
+export function renderError(
+    type: ErrorType,
+    input: string | string[]
+) {
     const message = Array.isArray(input)
         ? input.map(x => pc.red(x)).join('\n')
         : pc.red(input)
@@ -9,7 +17,7 @@ export function renderError(input: string | string[]) {
     console.error()
     console.error(
         boxen([
-            pc.red(pc.bold('AuthenticationError')),
+            pc.red(pc.bold(type)),
             message
         ].join('\n'), {
             borderColor: 'red',

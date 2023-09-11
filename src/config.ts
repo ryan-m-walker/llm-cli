@@ -2,24 +2,41 @@ import fs from 'node:fs'
 
 import { z } from 'zod'
 
-import { CONFIG_DIR_PATH, CONFIG_FILE_PATH, CONVO_HISTORY_PATH } from './const.js'
+import { CONFIG_DIR_PATH, CONFIG_FILE_PATH, CONVO_HISTORY_PATH, PRESETS_PATH } from './const.js'
 import { Store } from './fs-store.js'
+import { serialize } from './utils.js'
 
-// | 'gpt-4'
-// | 'gpt-4-0314'
-// | 'gpt-4-0613'
-// | 'gpt-4-32k'
-// | 'gpt-4-32k-0314'
-// | 'gpt-4-32k-0613'
-// | 'gpt-3.5-turbo'
-// | 'gpt-3.5-turbo-16k'
-// | 'gpt-3.5-turbo-0301'
-// | 'gpt-3.5-turbo-0613'
-// | 'gpt-3.5-turbo-16k-0613';
+export enum LLMProvider {
+    OpenAI = 'OpenAI',
+    Anthropic = 'Anthropic',
+}
 
-const MODEL = {
-    GPT4: 'gpt-4',
-    GPTTurbo: 'gpt-3.5-turbo',
+export const OPENAI_MODELS = {
+    'gpt-4': 'gpt-4',
+    'gpt-4-0314': 'gpt-4-0314',
+    'gpt-4-0613': 'gpt-4-0613',
+    'gpt-4-32k': 'gpt-4-32k',
+    'gpt-4-32k-0314':'gpt-4-32k-0314',
+    'gpt-4-32k-0613': 'gpt-4-32k-0613',
+    'gpt-3.5-turbo': 'gpt-3.5-turbo',
+    'gpt-3.5-turbo-16k': 'gpt-3.5-turbo-16k',
+    'gpt-3.5-turbo-0301': 'gpt-3.5-turbo-0301',
+    'gpt-3.5-turbo-0613': 'gpt-3.5-turbo-0613',
+    'gpt-3.5-turbo-16k-0613': 'gpt-3.5-turbo-16k-0613',
+} as const
+
+export const ANTHROPIC_MODELS = {
+    'claude-2': 'claude-2',
+    'claude-instant-1.2': 'claude-instant-1.2',
+    'claude-instant-v1': 'claude-instant-v1',
+    'claude-instant-v1-100k': 'claude-instant-v1-100k',
+    'claude-v1': 'claude-v1',
+    'claude-v1-100k': 'claude-v1-100k',
+}
+
+export const PROVIDER_MODELS = {
+    [LLMProvider.OpenAI]: Object.values(OPENAI_MODELS),
+    [LLMProvider.Anthropic]: Object.values(ANTHROPIC_MODELS),
 }
 
 const configSchema = z.object({
@@ -31,7 +48,7 @@ const configSchema = z.object({
 export type Config = z.infer<typeof configSchema>
 
 const configDefaults = {
-    model: MODEL.GPT4,
+    model: OPENAI_MODELS['gpt-3.5-turbo'],
     temperature: 0,
     apiKey: null,
 } satisfies Config
@@ -42,11 +59,15 @@ if (!fs.existsSync(CONFIG_DIR_PATH)) {
 }
 
 if (!fs.existsSync(CONFIG_FILE_PATH)) {
-    fs.writeFileSync(CONFIG_FILE_PATH, JSON.stringify(configDefaults, null, 4))
+    fs.writeFileSync(CONFIG_FILE_PATH, serialize(configDefaults))
 }
 
 if (!fs.existsSync(CONVO_HISTORY_PATH)) {
     fs.mkdirSync(CONVO_HISTORY_PATH)
+}
+
+if (!fs.existsSync(PRESETS_PATH)) {
+    fs.mkdirSync(PRESETS_PATH)
 }
 
 export const config = new Store<Config>({
