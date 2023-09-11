@@ -1,0 +1,48 @@
+{
+  "name": "gpt-cli",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./dist/cli.js",
+  "bin": {
+    "llm": "./dist/cli.cjs"
+  },
+  "scripts": {
+    "build": "pnpm clean && esbuild --bundle --sourcemap --bundle --platform=node --outfile=dist/cli.cjs ./src/cli.ts",
+    "type-check": "tsc --noEmit",
+    "dev": "tsx ./src/cli.ts",
+    "clean": "rimraf ./dist",
+    "start": "pnpm build && node ./dist/cli.cjs"
+  },
+  "type": "module",
+  "keywords": [],
+  "author": "Ryan Walker",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.5.9",
+    "@typescript-eslint/eslint-plugin": "^6.6.0",
+    "@typescript-eslint/parser": "^6.6.0",
+    "esbuild": "^0.19.2",
+    "eslint": "^8.49.0",
+    "eslint-config-prettier": "^9.0.0",
+    "prettier": "^3.0.3",
+    "rimraf": "^5.0.1",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
+    "tslib": "^2.6.2",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "boxen": "^7.1.1",
+    "change-case": "^4.1.2",
+    "clipboardy": "^3.0.0",
+    "commander": "^11.0.0",
+    "conf": "^11.0.2",
+    "date-fns": "^2.30.0",
+    "dotenv": "^16.3.1",
+    "node-clipboardy": "^1.0.3",
+    "openai": "^4.5.0",
+    "picocolors": "^1.0.0",
+    "tsx": "^3.12.8",
+    "zod": "^3.22.2"
+  }
+}
