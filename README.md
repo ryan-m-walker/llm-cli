@@ -10,6 +10,12 @@ $ npm i -g llm-cli
 
 ## Basic Usage
 
+To start you'll first want to add your LLM API key (right now only OpenAI is supported):
+
+``` bash
+$ llm config set --apiKey <YOUR OPENAI API KEY>
+```
+
 To start a new chat conversation:
 
 ``` bash
