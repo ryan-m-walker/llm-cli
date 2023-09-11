@@ -16,10 +16,9 @@ export function renderError(
 
     console.error()
     console.error(
-        boxen([
-            pc.red(pc.bold(type)),
-            message
-        ].join('\n'), {
+        boxen(message, {
+            title: type,
+            titleAlignment: 'center',
             borderColor: 'red',
             borderStyle: 'round',
             padding: 1
@@ -36,7 +35,7 @@ export function renderMessage(input: string | string[]) {
     console.log()
     console.log(
         boxen(message, {
-            borderColor: 'gray',
+            dimBorder: true,
             borderStyle: 'round',
             padding: 1
         })

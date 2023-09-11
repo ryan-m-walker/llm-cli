@@ -13,15 +13,15 @@ import boxen from 'boxen'
 import { capitalCase } from 'change-case'
 import { z } from 'zod'
 import clipboard from 'node-clipboardy'
-import * as dateFns from 'date-fns'
+// import * as dateFns from 'date-fns'
 import inquirer from 'inquirer'
 
-import { Config, LLMProvider, PROVIDER_MODELS } from './config.js'
+import { Config } from './config.js'
 import { ErrorType, renderError, renderMessage } from './ui.js'
 import { CONFIG_DIR_PATH, CONVO_HISTORY_PATH, PRESETS_PATH } from './const.js'
 import { config } from './config.js'
 import { ArrayStore } from './fs-store.js'
-import { getAllPresetNames, getAllPresets } from './presets.js'
+import { getAllPresetNames, getAllPresets, getPreset, overwritePreset, presetForm } from './presets.js'
 import { serialize } from './utils.js'
 
 const messageSchema = z.object({
@@ -83,87 +83,16 @@ async function main() {
 
     presetCommand.command('new')
         .action(async () => {
-            const existing = await getAllPresetNames()
-
-            const nameResponse = await inquirer.prompt<{ name: string }>({
-                type: 'input',
-                name: 'name',
-                message: 'What would you like to name your preset?',
-                validate(value) {
-                    if (!value) return 'Name is required'
-
-                    if (existing.includes(value.trim())) {
-                        return `Preset name "${value.trim()}" already exists.`
-                    } 
-
-                    return true 
-                },
-            })
-
-            const descriptionResponse = await inquirer.prompt<{ description: string }>({
-                type: 'input',
-                name: 'description',
-                message: 'What description would you like to give your preset? (Optional)',
-            })
-
-            const providerResponse = await inquirer.prompt<{ provider: string }>({
-                type: 'list',
-                name: 'provider',
-                message: 'Which LLM provider would you like to use?',
-                choices: Object.values(LLMProvider)
-            })
-
-            const apiKeyResponse = await inquirer.prompt({
-                type: 'input',
-                name: 'apiKey',
-                message: `What is your ${providerResponse.provider} API key?`,
-                validate(value) {
-                    if (!value) return 'API key is required'
-                    return true
-                }
-            })
-
-            const models = providerResponse.provider === LLMProvider.OpenAI
-                ? PROVIDER_MODELS[LLMProvider.OpenAI]
-                : PROVIDER_MODELS[LLMProvider.Anthropic]
-
-            const modelResponse = await inquirer.prompt({
-                type: 'list',
-                loop: false,
-                name: 'model',
-                message: 'Which LLM would you like to use?',
-                choices: models
-            })
-
-            const temperatureResponse = await inquirer.prompt({
-                type: 'number',
-                name: 'temperature',
-                message: 'What model temperate would you like to use?',
-                default: 0,
-            })
-
-
-            const name = nameResponse.name
-
-            const preset = {
-                ...providerResponse,
-                ...apiKeyResponse,
-                ...modelResponse,
-                ...temperatureResponse,
-                ...descriptionResponse,
-            }
-
-            const serialzed = serialize(preset)
-            console.log({ serialzed })
+            const preset = await presetForm()
 
             await fs.writeFile(
-                path.join(PRESETS_PATH, name + '.json'),
+                path.join(PRESETS_PATH, preset.id + '.json'),
                 serialize(preset),
                 'utf8'
             )
 
             console.log()
-            console.log(`Preset "${name}" created.`)
+            console.log(`Preset "${preset.name}" created.`)
             console.log()
         })
 
@@ -173,21 +102,47 @@ async function main() {
             const allPresets = await getAllPresets()
 
             for (const p of allPresets) {
-                console.log(
-                    boxen([
-                        pc.bold(p.name) + ':',
-                        p.description ? pc.dim(p.description) : null,
-                        'Provider: ' + p.provider,
-                        'Model: ' + p.model,
-                        'Temperature: ' + p.temperature,
-                    ].filter(Boolean).join('\n'),
-                    {
-                        borderStyle: 'round',
-                        borderColor: 'gray',
-                        padding: 1,
-                    })
-                )
+                console.log(pc.bold(p.name + ':'))
+
+                if (p.description) {
+                    console.log(pc.dim(p.description))
+                }
+
+                console.log('Provider: ' + p.provider)
+                console.log('Model: ' + p.model)
+                console.log('Temperature: ' + p.temperature)
+                console.log()
             }
+        })
+
+    presetCommand
+        .command('edit [preset]')
+        .action(async (preset) => {
+            const allPresetNames = await getAllPresetNames()
+
+            if (!preset) {
+                const presetResponse = await inquirer.prompt({
+                    type: 'list',
+                    name: 'preset',
+                    choices: allPresetNames,
+                })
+
+                preset = presetResponse.preset
+            }
+
+            if (!allPresetNames.includes(preset)) {
+                renderError(ErrorType.InputError, [
+                    `Preset "${preset}" does not exist.`,
+                    'Use `llm preset new` to create a new preset.'
+                ])
+                process.exit(1)
+            }
+
+            const updated = await presetForm({
+                defaults: await getPreset(preset)
+            })
+
+            await overwritePreset(updated)
         })
 
     presetCommand
@@ -233,7 +188,7 @@ async function main() {
                 return
             }
 
-            renderMessage(allMessages.map(({ messages, date }, i) => `${i + 1}: ${pc.dim(date)} "${messages.at(0).content}"`))
+            // renderMessage(allMessages.map(({ messages, date }, i) => `${i + 1}: ${pc.dim(date)} "${messages.at(0).content}"`))
         })
 
     historyCommand
@@ -437,10 +392,10 @@ async function getAllMessages() {
                 continue
             }
 
-            allMessages.push({
-                date: dateFns.format(dateFns.parseISO(file.replace('.json', '')), 'MM/dd hh:mm') as Date,
-                messages: parsed.data
-            })
+            // allMessages.push({
+            //     date: dateFns.format(dateFns.parseISO(file.replace('.json', '')), 'MM/dd hh:mm') as Date,
+            //     messages: parsed.data
+            // })
          }
     }
 
