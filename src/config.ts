@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { CONFIG_DIR_PATH, CONFIG_FILE_PATH, CONVO_HISTORY_PATH, PRESETS_PATH } from './const.js'
 import { Store } from './fs-store.js'
 import { serialize } from './utils.js'
+import { presetForm, upsertPreset } from './presets.js'
 
 export enum LLMProvider {
     OpenAI = 'OpenAI',
@@ -40,34 +41,13 @@ export const PROVIDER_MODELS = {
 }
 
 const configSchema = z.object({
-    model: z.string(),
-    temperature: z.number().gte(0).lte(1),
-    apiKey: z.string().nullable()
+    activePreset: z.string().nullable()
 })
 
 export type Config = z.infer<typeof configSchema>
 
-const configDefaults = {
-    model: OPENAI_MODELS['gpt-3.5-turbo'],
-    temperature: 0,
-    apiKey: null,
-} satisfies Config
-
-
-if (!fs.existsSync(CONFIG_DIR_PATH)) {
-    fs.mkdirSync(CONFIG_DIR_PATH)
-}
-
-if (!fs.existsSync(CONFIG_FILE_PATH)) {
-    fs.writeFileSync(CONFIG_FILE_PATH, serialize(configDefaults))
-}
-
-if (!fs.existsSync(CONVO_HISTORY_PATH)) {
-    fs.mkdirSync(CONVO_HISTORY_PATH)
-}
-
-if (!fs.existsSync(PRESETS_PATH)) {
-    fs.mkdirSync(PRESETS_PATH)
+const configDefaults: Config = {
+    activePreset: null
 }
 
 export const config = new Store<Config>({
@@ -75,3 +55,28 @@ export const config = new Store<Config>({
     defaults: configDefaults,
 })
 
+if (!fs.existsSync(CONFIG_DIR_PATH)) {
+    fs.mkdirSync(CONFIG_DIR_PATH)
+}
+
+if (!fs.existsSync(PRESETS_PATH)) {
+    fs.mkdirSync(PRESETS_PATH)
+}
+
+if (!fs.existsSync(CONFIG_FILE_PATH)) {
+    console.log('Set up a default preset to get started')
+    console.log()
+
+    const defaultPreset = await presetForm({
+        defaults: {
+            name: 'default'
+        }
+    })
+
+    await upsertPreset(defaultPreset)
+    config.set('activePreset', defaultPreset.id)    
+}
+
+if (!fs.existsSync(CONVO_HISTORY_PATH)) {
+    fs.mkdirSync(CONVO_HISTORY_PATH)
+}

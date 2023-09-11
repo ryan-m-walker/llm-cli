@@ -10,7 +10,6 @@ import { Command } from 'commander'
 import OpenAI, { AuthenticationError } from 'openai'
 import pc from 'picocolors'
 import boxen from 'boxen'
-import { capitalCase } from 'change-case'
 import { z } from 'zod'
 import clipboard from 'node-clipboardy'
 // import * as dateFns from 'date-fns'
@@ -19,9 +18,8 @@ import inquirer from 'inquirer'
 import { Config } from './config.js'
 import { ErrorType, renderError, renderMessage } from './ui.js'
 import { CONFIG_DIR_PATH, CONVO_HISTORY_PATH, PRESETS_PATH } from './const.js'
-import { config } from './config.js'
 import { ArrayStore } from './fs-store.js'
-import { getAllPresetNames, getAllPresets, getPreset, overwritePreset, presetForm } from './presets.js'
+import { getAllPresetNames, getAllPresets, getPreset, upsertPreset, presetForm, getActivePreset } from './presets.js'
 import { serialize } from './utils.js'
 
 const messageSchema = z.object({
@@ -37,46 +35,6 @@ type Message = z.TypeOf<typeof messageSchema>
 
 async function main() {
     const program = new Command()
-
-    const configCommand = program
-        .command('config')
-        .description('Manage configuration options')
-
-    configCommand
-        .command('set')
-        .description('Set one or more config fields')
-        .option('-k, --apiKey <string>', "Set your OpenAI API key")
-        .option('-t, --temperature <number>', "Set the default model temperature")
-        .option('-m, --model <string>', "Set the default GPT model")
-        .action((options: Config) => {
-            if (options.temperature) config.set('temperature', parseTemperature(options.temperature))
-            if (options.model) config.set('model', options.model)
-            if (options.apiKey) config.set('apiKey', options.apiKey)
-        })
-
-    configCommand
-        .command('reset')
-        .description('Reset the config file to default values (Note: this will remove your OpenAI API key)')
-        .action(() => {
-            config.reset()
-        })
-
-    configCommand
-        .command('view')
-        .description('View current config values')
-        .action(() => {
-            console.log(
-                boxen(Object.entries(config.data).map(([key, value]) => {
-                    return pc.bold(capitalCase(key)) + ': ' + value
-                }).join('\n'),
-                {
-                    borderStyle: 'round',
-                    borderColor: 'gray',
-                    padding: 1,
-                })
-            )
-            console.log()
-        })
 
     const presetCommand = program
         .command('preset')
@@ -142,7 +100,7 @@ async function main() {
                 defaults: await getPreset(preset)
             })
 
-            await overwritePreset(updated)
+            await upsertPreset(updated)
         })
 
     presetCommand
@@ -209,15 +167,17 @@ async function main() {
         .option('-k, --apiKey <string>', "Set your OpenAI API key")
         .option('-t, --temperature <number>', "Set the default model temperature")
         .action(async (_, options: Partial<Config>) => {
-            function startConversation() {                    
+            async function startConversation() {                    
                 const conversationId = new Date().toISOString()            
 
                 const conversation = new ArrayStore<Message>({
                     filepath: path.join(CONVO_HISTORY_PATH, conversationId + '.json')
                 })
 
+                const preset = await getActivePreset()
+
                 const mergedConfig = {
-                    ...config.data,
+                    ...preset,
                     ...options
                 }
 
@@ -371,7 +331,7 @@ async function main() {
                 chat()
             } 
 
-            startConversation()
+            await startConversation()
         })
 
     await program.parseAsync()

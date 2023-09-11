@@ -5,11 +5,13 @@ import crypto from 'node:crypto'
 import inquirer from 'inquirer'
 
 import { PRESETS_PATH } from './const.js'
-import { LLMProvider, PROVIDER_MODELS } from './config.js'
+import { LLMProvider, PROVIDER_MODELS, config } from './config.js'
 import { ErrorType, renderError } from './ui.js'
 import { serialize } from './utils.js'
 
-const makeId = () => crypto.randomBytes(8).toString('hex')
+function makeId() {
+    return crypto.randomBytes(8).toString('hex')
+}
 
 export type Preset = {
     id: string
@@ -50,12 +52,18 @@ export async function getPreset(name: string): Promise<Preset> {
     return preset
 }
 
-export async function overwritePreset(preset: Preset) {
+export async function upsertPreset(preset: Preset) {
     await fs.writeFile(
         path.join(PRESETS_PATH, preset.id + '.json'),
         serialize(preset),
         'utf8'
     )
+}
+
+export async function getActivePreset() {
+    const activePrest = config.get('activePreset')
+    const string = await fs.readFile(path.join(PRESETS_PATH, activePrest + '.json'), 'utf8')
+    return JSON.parse(string)
 }
 
 type PresetFormOptions = {
