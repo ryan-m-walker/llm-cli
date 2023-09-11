@@ -1,6 +1,6 @@
 {
   "name": "llm-cli",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "MIT",
   "description": "",
   "main": "./dist/cli.js",
@@ -13,7 +13,7 @@
     "dev": "tsx ./src/cli.ts",
     "clean": "rimraf ./dist",
     "start": "pnpm build && node ./dist/cli.cjs",
-    "publish": "pnpm build && npm publish"
+    "pub": "pnpm build && npm publish"
   },
   "type": "module",
   "keywords": [],
