@@ -18,7 +18,7 @@ export type Preset = {
     name: string
     provider: LLMProvider
     model: string
-    temperate: number
+    temperature: number
     description?: string
     apiKey: string
 }
@@ -28,7 +28,7 @@ export async function getAllPresetNames() {
     return allPreset.map(p => p.name)
 }
 
-export async function getAllPresets() {
+export async function getAllPresets(): Promise<Preset[]> {
     const files = await fs.readdir(PRESETS_PATH)
 
     const presets = await Promise.all(files.map(async (file) => {
@@ -60,9 +60,9 @@ export async function upsertPreset(preset: Preset) {
     )
 }
 
-export async function getActivePreset() {
-    const activePrest = config.get('activePreset')
-    const string = await fs.readFile(path.join(PRESETS_PATH, activePrest + '.json'), 'utf8')
+export async function getActivePreset(): Promise<Preset> {
+    const activePreset = config.get('activePreset')
+    const string = await fs.readFile(path.join(PRESETS_PATH, activePreset + '.json'), 'utf8')
     return JSON.parse(string)
 }
 
@@ -133,7 +133,7 @@ export async function presetForm(options: PresetFormOptions = {}) {
     const temperatureResponse = await inquirer.prompt({
         type: 'number',
         name: 'temperature',
-        default: options.defaults?.temperate ?? 0,
+        default: options.defaults?.temperature ?? 0,
         message: 'What model temperate would you like to use?',
     })
 

@@ -39,7 +39,7 @@ export class Store<T extends Record<string, unknown>> {
 
     reset() {
         this._data = this.defaults
-        fs.writeFileSync(this.filepath, JSON.serialize(this._data), 'utf8')
+        fs.writeFileSync(this.filepath, serialize(this._data), 'utf8')
     }
 
     values() {

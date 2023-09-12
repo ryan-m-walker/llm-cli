@@ -15,7 +15,7 @@ import clipboard from 'node-clipboardy'
 // import * as dateFns from 'date-fns'
 import inquirer from 'inquirer'
 
-import { Config, initConfigDir } from './config.js'
+import { Config, config, initConfigDir } from './config.js'
 import { ErrorType, renderError, renderMessage } from './ui.js'
 import { CONFIG_DIR_PATH, CONVO_HISTORY_PATH, PRESETS_PATH } from './const.js'
 import { ArrayStore } from './fs-store.js'
@@ -40,8 +40,10 @@ async function main() {
 
     const presetCommand = program
         .command('preset')
+        .description('Manage and view model presets')
 
     presetCommand.command('new')
+        .description('Create a new model preset')
         .action(async () => {
             const preset = await presetForm()
 
@@ -58,6 +60,7 @@ async function main() {
 
     presetCommand
         .command('list')
+        .description('View all current model presets')
         .action(async () => {
             const allPresets = await getAllPresets()
 
@@ -77,6 +80,7 @@ async function main() {
 
     presetCommand
         .command('edit [preset]')
+        .description("Edit a model preset's configuration")
         .action(async (preset) => {
             const allPresetNames = await getAllPresetNames()
 
@@ -107,6 +111,7 @@ async function main() {
 
     presetCommand
         .command('use [preset]')
+        .description('Set a given model preset as the default preset')
         .action(async (preset) => {
             const allPresetNames = await getAllPresetNames()
 
@@ -129,6 +134,22 @@ async function main() {
                 ])
                 process.exit(1)
             }
+
+            const allPresets = await getAllPresets()
+            const presetConfig = allPresets.find(p => p.name === preset.trim())
+
+            if (!presetConfig) {
+                renderError(ErrorType.InputError, [
+                    `Preset "${preset}" does not exist.`,
+                    'Use `llm preset new` to create a new preset.'
+                ])
+                process.exit(1)
+            }
+
+            config.set('activePreset', presetConfig.id)
+
+            console.log(pc.dim(`(Active preset set to ${preset})`))
+            console.log()
         })
         
 
