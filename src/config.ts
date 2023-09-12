@@ -55,28 +55,30 @@ export const config = new Store<Config>({
     defaults: configDefaults,
 })
 
-if (!fs.existsSync(CONFIG_DIR_PATH)) {
-    fs.mkdirSync(CONFIG_DIR_PATH)
-}
+export async function initConfigDir() {
+    if (!fs.existsSync(CONFIG_DIR_PATH)) {
+        fs.mkdirSync(CONFIG_DIR_PATH)
+    }
 
-if (!fs.existsSync(PRESETS_PATH)) {
-    fs.mkdirSync(PRESETS_PATH)
-}
+    if (!fs.existsSync(PRESETS_PATH)) {
+        fs.mkdirSync(PRESETS_PATH)
+    }
 
-if (!fs.existsSync(CONFIG_FILE_PATH)) {
-    console.log('Set up a default preset to get started')
-    console.log()
+    if (!fs.existsSync(CONFIG_FILE_PATH)) {
+        console.log('Set up a default preset to get started')
+        console.log()
 
-    const defaultPreset = await presetForm({
-        defaults: {
-            name: 'default'
-        }
-    })
+        const defaultPreset = await presetForm({
+            defaults: {
+                name: 'default'
+            }
+        })
 
-    await upsertPreset(defaultPreset)
-    config.set('activePreset', defaultPreset.id)    
-}
+        await upsertPreset(defaultPreset)
+        config.set('activePreset', defaultPreset.id)    
+    }
 
-if (!fs.existsSync(CONVO_HISTORY_PATH)) {
-    fs.mkdirSync(CONVO_HISTORY_PATH)
+    if (!fs.existsSync(CONVO_HISTORY_PATH)) {
+        fs.mkdirSync(CONVO_HISTORY_PATH)
+    }
 }

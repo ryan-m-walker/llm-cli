@@ -15,7 +15,7 @@ import clipboard from 'node-clipboardy'
 // import * as dateFns from 'date-fns'
 import inquirer from 'inquirer'
 
-import { Config } from './config.js'
+import { Config, initConfigDir } from './config.js'
 import { ErrorType, renderError, renderMessage } from './ui.js'
 import { CONFIG_DIR_PATH, CONVO_HISTORY_PATH, PRESETS_PATH } from './const.js'
 import { ArrayStore } from './fs-store.js'
@@ -34,6 +34,8 @@ const messageSchema = z.object({
 type Message = z.TypeOf<typeof messageSchema>
 
 async function main() {
+    await initConfigDir()
+
     const program = new Command()
 
     const presetCommand = program
