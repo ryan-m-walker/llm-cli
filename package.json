@@ -3,17 +3,20 @@
   "version": "0.0.7",
   "license": "MIT",
   "description": "",
-  "main": "./dist/cli.js",
+  "main": "./dist/cli.cjs",
   "bin": {
     "llm": "./dist/cli.cjs"
   },
+  "files": [
+    "dist/*"
+  ],
   "scripts": {
     "build": "pnpm clean && esbuild --bundle --sourcemap --bundle --platform=node --outfile=dist/cli.cjs ./src/cli.ts",
     "type-check": "tsc --noEmit",
     "dev": "tsx ./src/cli.ts",
     "clean": "rimraf ./dist",
     "start": "pnpm build && node ./dist/cli.cjs",
-    "pub": "pnpm type-check && pnpm build && npm publish"
+    "pub": "pnpm type-check && pnpm build && npm version patch && npm publish"
   },
   "type": "module",
   "keywords": [],
