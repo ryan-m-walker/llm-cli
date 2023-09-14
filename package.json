@@ -11,7 +11,7 @@
     "dist/*"
   ],
   "scripts": {
-    "build": "pnpm clean && esbuild --bundle --sourcemap --bundle --platform=node --outfile=dist/cli.cjs ./src/cli.ts",
+    "build": "pnpm clean && esbuild --bundle --minify --sourcemap --bundle --platform=node --outfile=dist/cli.cjs ./src/cli.ts",
     "type-check": "tsc --noEmit",
     "dev": "tsx ./src/cli.ts",
     "clean": "rimraf ./dist",
