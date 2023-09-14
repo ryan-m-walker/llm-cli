@@ -19,8 +19,9 @@ import { Config, config, initConfigDir } from './config.js'
 import { ErrorType, renderError, renderMessage } from './ui.js'
 import { CONFIG_DIR_PATH, CONVO_HISTORY_PATH, PRESETS_PATH } from './const.js'
 import { ArrayStore } from './fs-store.js'
-import { getAllPresetNames, getAllPresets, getPreset, upsertPreset, presetForm, getActivePreset } from './presets.js'
+import { getAllPresetNames, getAllPresets, getPreset, upsertPreset, presetForm, getActivePreset, Preset } from './presets.js'
 import { serialize } from './utils.js'
+import { getLLMClient } from './providers/index.js'
 
 const messageSchema = z.object({
     role: z.union([
@@ -166,7 +167,7 @@ async function main() {
             if (!allMessages || allMessages.length === 0) {
                 console.log(pc.dim('(No conversation history)'))
                 console.log()
-                return
+                // return
             }
 
             // renderMessage(allMessages.map(({ messages, date }, i) => `${i + 1}: ${pc.dim(date)} "${messages.at(0).content}"`))
@@ -189,7 +190,7 @@ async function main() {
         .description('Start a new conversation with ChatGPT')
         .option('-k, --apiKey <string>', "Set your OpenAI API key")
         .option('-t, --temperature <number>', "Set the default model temperature")
-        .action(async (_, options: Partial<Config>) => {
+        .action(async (_, options: Partial<Preset>) => {
             async function startConversation() {                    
                 const conversationId = new Date().toISOString()            
 
@@ -213,8 +214,9 @@ async function main() {
                     process.exit()
                 }
 
-                const openai = new OpenAI({
-                    apiKey: mergedConfig.apiKey
+                const llmClient = getLLMClient({
+                    provider: mergedConfig.provider,
+                    apiKey: mergedConfig.apiKey,
                 })
 
                 readline.emitKeypressEvents(process.stdin)
@@ -240,6 +242,7 @@ async function main() {
                 console.log(boxen([
                     pc.bold('New chat conversation started'),
                     '',
+                    pc.bold('Provider: ') + mergedConfig.provider,
                     pc.bold('Model: ') + mergedConfig.model,
                     pc.bold('Temperature: ') + mergedConfig.temperature,
                     '',
@@ -268,6 +271,7 @@ async function main() {
                             renderMessage([
                                 pc.bold('Converation Help:'),
                                 '',
+                                pc.bold('Provider: ') + mergedConfig.provider,
                                 pc.bold('Model: ') + mergedConfig.model,
                                 pc.bold('Temperature: ') + mergedConfig.temperature,
                                 '',
@@ -310,31 +314,20 @@ async function main() {
                             content: input
                         })
 
-                        const stream = await openai.chat.completions.create({
+                        const stream = llmClient.chat({
                             model: mergedConfig.model ?? 'gpt-4',
                             temperature: mergedConfig.temperature ?? 0,
-                            messages: JSON.parse(JSON.stringify(conversation.data)), // TODO
-                            stream: true,
-                        }, {
+                            messages: conversation.data,
                             signal: controller.signal
-                        }).catch((error) => {
-                            if (error instanceof AuthenticationError) {
-                                renderError(ErrorType.AuthenticationError, [
-                                    'Are you sure your OpenAI token is correct?',
-                                    'Set it using `gpt config set --apiKey=<YOUR API KEY>`',
-                                ])
-                                process.exit(0)
-                            }
-
-                            throw error
                         })
+
 
                         isStreaming = true
                         let content = ''
                         process.stdout.write(pc.dim('[Assistant]: '))
 
                         for await (const part of stream) {
-                            const text = part.choices[0]?.delta?.content || ''
+                            const text = part
                             content += text
                             process.stdout.write(text);
                         }

@@ -8,23 +8,18 @@ A simple LLM chat wrapper for those of us who live in the terminal.
 $ npm i -g llm-cli
 ```
 
+This will add the global `llm` shell command.
+
 ## Basic Usage
 
-To start you'll first want to add your LLM API key (right now only OpenAI is supported):
-
-``` bash
-$ llm config set --apiKey <YOUR OPENAI API KEY>
-```
-
-To start a new chat conversation:
+To get started just use the chat command:
 
 ``` bash
 $ llm chat
 ```
 
-See all options:
+When you first use `llm-cli` you will then be prompted to set up your default preset. Presets are just predefined model configurations you can use for convenience. Once your default config is set up you will enter a chat conversation with the model set up in your default preset.
 
-``` bash
-$ llm help
-```
+## Other options
 
+Use `llm help` to see all other options.
