@@ -18,6 +18,10 @@
     "start": "pnpm build && node ./dist/cli.cjs",
     "pub": "pnpm type-check && pnpm build && npm version patch && npm publish"
   },
+  "repoitory": {
+    "type": "git",
+    "url": "https://github.com/ryan-m-walker/llm-cli"
+  },
   "type": "module",
   "keywords": [],
   "author": "Ryan Walker",
