@@ -22,6 +22,9 @@ import { ArrayStore } from './fs-store.js'
 import { getAllPresetNames, getAllPresets, getPreset, upsertPreset, presetForm, getActivePreset, Preset } from './presets.js'
 import { serialize } from './utils.js'
 import { getLLMClient } from './providers/index.js'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = fileURLToPath(import.meta.url)
 
 const messageSchema = z.object({
     role: z.union([
@@ -38,6 +41,10 @@ async function main() {
     await initConfigDir()
 
     const program = new Command()
+
+    const packageJSON = JSON.parse(await fs.readFile(path.join(__dirname, '../../package.json'), 'utf8'))
+
+    program.version(packageJSON.version)
 
     const presetCommand = program
         .command('preset')
